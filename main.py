@@ -16,9 +16,9 @@ models.Base.metadata.create_all(bind=engine)
 
 
 class UserBase(BaseModel):
-    email: str
-    name: str
-    password_hash: str
+    email: text
+    name: text
+    password_hash: text
 
 
 def get_db():
@@ -43,7 +43,7 @@ async def get_users(query: str, limit: int, db: Session = Depends(get_db)):
     # Get the total number of matched records
     total = len(users)
     # Return the results
-    return {"users": users, "total": total}
+    return JSONResponse(statuscode=status.HTTP_200_OK, content={"users": users, "total": total})
 
 
 @app.post("/users", status_code=status.HTTP_202_ACCEPTED)
@@ -64,4 +64,4 @@ async def create_user(user: UserBase, db: Session = Depends(get_db)):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": f"Duplicate e-mail: {user.email}"})
 
     # If the user was successfully added, return an empty response
-    return {}
+    return {"message: User created successfully"}
