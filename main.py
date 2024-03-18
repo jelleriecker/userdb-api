@@ -1,9 +1,11 @@
 from typing import Annotated
 
+import sqlalchemy
 from fastapi import FastAPI, Depends, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import text
+from sqlalchemy.engine import row
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -33,21 +35,22 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 
 @app.get("/users")
-async def get_users(query: str, limit: int, db: Session = Depends(get_db)):
+async def get_users(db: Session = Depends(get_db)):
+    def row2dict(row):
+        return {key: row[key] for key in row.keys()}
     try:
         # Construct the SQL query
-        sql_query = text("SELECT * FROM users WHERE name ILIKE :name LIMIT :limit")
+        sql_query = text("SELECT * FROM users")
         # Execute the query
-        results = db.execute(sql_query, {"name": f"{query}%", "limit": limit}).fetchall()
+        results = db.execute(sql_query).fetchall()
         # Convert the results into a list of dictionaries
-        users = [dict(row) for row in results]
-        # Get the total number of matched records
+        users = [row2dict(row) for row in results]
+        # Get the total number of users
         total = len(users)
         # Return the results
         return JSONResponse(content={"users": users, "total": total})
     except Exception as e:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": str(e)})
-
 
 @app.post("/users")
 async def create_user(user: UserBase, db: Session = Depends(get_db)):
@@ -67,4 +70,22 @@ async def create_user(user: UserBase, db: Session = Depends(get_db)):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={f"Duplicate e-mail: {user.email}"})
 
     # If the user was successfully added, return an empty response
-    return {"message: User created successfully"}
+    return {"message": "User created successfully"}
+
+
+    # def row2dict(email, name):
+    #     return {key: email[email, name] for key in email.keys()}
+    # try:
+    #     Construct the SQL query
+        # sql_query = text("SELECT * FROM users")
+        # Execute the query
+        # results = db.execute(sql_query).fetchall()
+        # Convert the results into a list of dictionaries
+        # users = [row2dict(email=) for row in results]
+        # Get the total number of users
+        # total = len(users)
+        # Return the results
+        # return JSONResponse(content={"users": users, "total": total})
+    # except Exception as e:
+    #     return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": str(e)})
+
