@@ -1,0 +1,8 @@
+sqlalchemy
+fastapi
+pydantic
+bcrypt
+fastapi-responses
+python-dotenv
+uvicorn
+psycopg2-binary

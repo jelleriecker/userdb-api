@@ -34,25 +34,28 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 @app.get("/users")
 async def get_users(query: str, limit: int, db: Session = Depends(get_db)):
-    # Construct the SQL query
-    sql_query = text("SELECT * FROM users WHERE name LIKE :name LIMIT :limit")
-    # Execute the query
-    results = db.execute(sql_query, {"name": f"{query}%", "limit": limit}).fetchall()
-    # Convert the results into a list of dictionaries
-    users = [dict(row) for row in results]
-    # Get the total number of matched records
-    total = len(users)
-    # Return the results
-    return JSONResponse(statuscode=status.HTTP_200_OK, content={"users": users, "total": total})
+    try:
+        # Construct the SQL query
+        sql_query = text("SELECT * FROM users WHERE name ILIKE :name LIMIT :limit")
+        # Execute the query
+        results = db.execute(sql_query, {"name": f"{query}%", "limit": limit}).fetchall()
+        # Convert the results into a list of dictionaries
+        users = [dict(row) for row in results]
+        # Get the total number of matched records
+        total = len(users)
+        # Return the results
+        return JSONResponse(content={"users": users, "total": total})
+    except Exception as e:
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": str(e)})
 
 
-@app.post("/users", status_code=status.HTTP_202_ACCEPTED)
+@app.post("/users")
 async def create_user(user: UserBase, db: Session = Depends(get_db)):
     # Hash the password
-    hashed_password = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
+    password_hash = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
 
     # Create the new user
-    db_user = models.Users(email=user.email, name=user.name, hashed_password=hashed_password)
+    db_user = models.Users(email=user.email, name=user.name, password_hash=password_hash)
 
     try:
         # Add the new user to the database
@@ -61,7 +64,7 @@ async def create_user(user: UserBase, db: Session = Depends(get_db)):
     except IntegrityError:
         # If the email already exists, rollback the transaction and return an error
         db.rollback()
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": f"Duplicate e-mail: {user.email}"})
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={f"Duplicate e-mail: {user.email}"})
 
     # If the user was successfully added, return an empty response
     return {"message: User created successfully"}
